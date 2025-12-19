@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useJokes } from '@/hooks/useJokes';
 import { Trash2, Share2, Skull, TrendingUp, AlertTriangle } from 'lucide-react';
+import Image from 'next/image'; // Importado para resolver o aviso de LCP
 
 export default function Dashboard() {
   const { jokes, addJoke, deleteJoke } = useJokes();
@@ -57,10 +58,16 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#F3F1EE] pb-12 text-[#181410] font-sans">
-      {/* BANNER */}
+      {/* BANNER - Corrigido para usar componente Image do Next.js */}
       <div className="max-w-4xl mx-auto pt-8 px-4">
-        <div className="border-8 border-[#181410] shadow-[12px_12px_0px_0px_rgba(24,20,16,1)] overflow-hidden">
-          <img src="/banner.png" alt="Serafinator" className="w-full h-auto object-cover" />
+        <div className="border-8 border-[#181410] shadow-[12px_12px_0px_0px_rgba(24,20,16,1)] overflow-hidden relative h-[300px] w-full">
+          <Image 
+            src="/banner.png" 
+            alt="Serafinator" 
+            fill
+            className="object-cover"
+            priority 
+          />
         </div>
       </div>
 
@@ -93,10 +100,11 @@ export default function Dashboard() {
 
         {/* FORMULÁRIO */}
         <div className="bg-white border-8 border-[#181410] p-8 shadow-[12px_12px_0px_0px_rgba(24,20,16,1)] mb-12">
-          <h2 className="text-3xl font-black uppercase mb-6 italic italic">Registar Nova Ocorrência</h2>
+          <h2 className="text-3xl font-black uppercase mb-6 italic">Registar Nova Ocorrência</h2>
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-black uppercase mb-2 text-[#181410]">A "Pérola" do Serafim:</label>
+              {/* ERRO DE ASPAS CORRIGIDO AQUI */}
+              <label className="block text-sm font-black uppercase mb-2 text-[#181410]">A &quot;Pérola&quot; do Serafim:</label>
               <textarea
                 className="border-4 border-[#181410] p-4 w-full text-xl font-bold bg-[#F3F1EE] focus:outline-none"
                 value={text}
@@ -185,7 +193,8 @@ export default function Dashboard() {
                   <div className="bg-[#F67611] text-white px-3 py-1 font-black text-xs uppercase italic">Cringe: {j.cringeLevel}/10</div>
                 </div>
 
-                <p className="text-4xl font-black italic leading-tight mt-4 mb-6 pr-10">"{j.text}"</p>
+                {/* ERRO DE ASPAS CORRIGIDO AQUI TAMBÉM */}
+                <p className="text-4xl font-black italic leading-tight mt-4 mb-6 pr-10">&quot;{j.text}&quot;</p>
 
                 <div className="flex justify-between items-center border-t-4 border-[#181410] pt-4 font-bold uppercase text-xs">
                   <span className={j.reaction === 'Silêncio Mortal' ? 'text-red-600 underline decoration-2' : j.reaction === 'Ficou sem ar' ? 'text-green-600' : ''}>
