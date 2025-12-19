@@ -1,11 +1,13 @@
 'use client';
-import { useState } from 'react';
-import { useJokes } from '@/hooks/useJokes';
+import { useState, useEffect } from 'react';
+// Removemos o useJokes local e usamos fetch direto para a API
 import { Trash2, Share2, Skull, TrendingUp, AlertTriangle } from 'lucide-react';
-import Image from 'next/image'; // Importado para resolver o aviso de LCP
+import Image from 'next/image';
 
 export default function Dashboard() {
-  const { jokes, addJoke, deleteJoke } = useJokes();
+  // --- ESTADOS DA LISTA (Vindos da Base de Dados) ---
+  const [jokes, setJokes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Estados para o formulário
   const [text, setText] = useState('');
@@ -14,16 +16,76 @@ export default function Dashboard() {
   const [noOneLaughed, setNoOneLaughed] = useState(false);
   const [outOfBreath, setOutOfBreath] = useState(false);
 
-  // --- LÓGICA DO PONTO 1: ESTATÍSTICAS ---
+  // --- FUNÇÕES DE LIGAÇÃO À BASE DE DATOS ---
+  
+  // 1. Carregar crimes ao abrir a página
+  const fetchJokes = async () => {
+    try {
+      const response = await fetch('/api/jokes');
+      const data = await response.json();
+      setJokes(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Erro ao carregar crimes:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchJokes();
+  }, []);
+
+  // 2. Gravar novo crime
+  const salvar = async () => {
+    if (!text) return;
+    
+    let impacto = 'Sopro pelo nariz';
+    if (outOfBreath) impacto = 'Ficou sem ar';
+    if (noOneLaughed) impacto = 'Silêncio Mortal';
+
+    const novoCrime = {
+      text,
+      category,
+      reaction: impacto,
+      cringeLevel: Number(cringeLevel),
+    };
+
+    try {
+      const response = await fetch('/api/jokes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoCrime),
+      });
+
+      if (response.ok) {
+        setText('');
+        setCringeLevel(5);
+        setNoOneLaughed(false);
+        setOutOfBreath(false);
+        fetchJokes(); // Atualiza a lista global
+        alert('Crime registado no Postgres! Serafim está em apuros. 🚔');
+      }
+    } catch (error) {
+      alert('Erro ao ligar à base de dados. Verifica o teu .env');
+    }
+  };
+
+  // 3. Eliminar crime (Opcional: podes criar a rota DELETE na API depois)
+  const deleteJoke = async (id: number) => {
+    if (!confirm("Desejas perdoar este crime?")) return;
+    // Por agora removemos apenas visualmente ou podes implementar o DELETE na API
+    setJokes(jokes.filter((j: any) => j.id !== id));
+  };
+
+  // --- LÓGICA DE ESTATÍSTICAS ---
   const totalCrimes = jokes.length;
   const avgCringe = totalCrimes > 0 
-    ? (jokes.reduce((acc, j) => acc + j.cringeLevel, 0) / totalCrimes).toFixed(1) 
+    ? (jokes.reduce((acc: any, j: any) => acc + j.cringeLevel, 0) / totalCrimes).toFixed(1) 
     : 0;
-  const mortesPorSilencio = jokes.filter(j => j.reaction === 'Silêncio Mortal').length;
+  const mortesPorSilencio = jokes.filter((j: any) => j.reaction === 'Silêncio Mortal').length;
 
   const categorias = ['Linguística', 'Humor Negro', 'Machista', 'Cringe', 'Alfaiate', 'Dacia', 'Bíblica', 'Outra'];
 
-  // --- LÓGICA DO PONTO 4: PARTILHA ---
+  // --- LÓGICA DE PARTILHA ---
   const compartilharCrime = (joke: any) => {
     const mensagem = `🚨 *CRIME DE HUMOR DETETADO* 🚨\n\n"${joke.text}"\n\n📌 *Tipo:* ${joke.category}\n😬 *Nível de Cringe:* ${joke.cringeLevel}/10\n💀 *Impacto:* ${joke.reaction}\n\n_Enviado via Serafinator v1.0_`;
     
@@ -31,34 +93,8 @@ export default function Dashboard() {
     alert('Crime copiado! Já podes denunciar no WhatsApp.');
   };
 
-  const salvar = () => {
-    if (!text) return;
-    let impacto = 'Sopro pelo nariz';
-    if (outOfBreath) impacto = 'Ficou sem ar';
-    if (noOneLaughed) impacto = 'Silêncio Mortal';
-
-    addJoke({
-      id: Math.random().toString(36).substr(2, 9),
-      text,
-      category,
-      date: new Date().toISOString(),
-      location: 'Escritório',
-      audienceSize: 1,
-      reaction: impacto,
-      cringeLevel: Number(cringeLevel),
-      dryMeter: 10,
-      tags: [],
-      isFavorite: false,
-    });
-    setText('');
-    setCringeLevel(5);
-    setNoOneLaughed(false);
-    setOutOfBreath(false);
-  };
-
   return (
     <div className="min-h-screen bg-[#F3F1EE] pb-12 text-[#181410] font-sans">
-      {/* BANNER - Corrigido para usar componente Image do Next.js */}
       <div className="max-w-4xl mx-auto pt-8 px-4">
         <div className="border-8 border-[#181410] shadow-[12px_12px_0px_0px_rgba(24,20,16,1)] overflow-hidden relative h-[300px] w-full">
           <Image 
@@ -73,7 +109,7 @@ export default function Dashboard() {
 
       <main className="max-w-4xl mx-auto mt-10 px-4">
         
-        {/* --- PAINEL DE ESTATÍSTICAS (PONTO 1) --- */}
+        {/* PAINEL DE ESTATÍSTICAS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
           <div className="bg-white border-4 border-[#181410] p-4 shadow-[4px_4px_0px_0px_rgba(24,20,16,1)] flex items-center gap-4">
             <AlertTriangle className="text-[#F67611]" size={32} />
@@ -103,7 +139,6 @@ export default function Dashboard() {
           <h2 className="text-3xl font-black uppercase mb-6 italic">Registar Nova Ocorrência</h2>
           <div className="space-y-6">
             <div>
-              {/* ERRO DE ASPAS CORRIGIDO AQUI */}
               <label className="block text-sm font-black uppercase mb-2 text-[#181410]">A &quot;Pérola&quot; do Serafim:</label>
               <textarea
                 className="border-4 border-[#181410] p-4 w-full text-xl font-bold bg-[#F3F1EE] focus:outline-none"
@@ -158,7 +193,7 @@ export default function Dashboard() {
               onClick={salvar}
               className="w-full bg-[#F67611] hover:bg-[#C44607] text-white py-4 font-black uppercase text-2xl border-4 border-[#181410] shadow-[6px_6px_0px_0px_rgba(24,20,16,1)] transition-all active:translate-y-1 active:shadow-none"
             >
-              ADICIONAR AO PORTEFÓLIO
+              ADICIONAR AO PORTEFÓLIO GLOBAL
             </button>
           </div>
         </div>
@@ -166,45 +201,46 @@ export default function Dashboard() {
         {/* LISTAGEM */}
         <div className="space-y-8">
           <h3 className="text-3xl font-black uppercase italic underline decoration-[#F67611] decoration-8 underline-offset-8">Histórico de Crimes:</h3>
-          <div className="grid grid-cols-1 gap-8">
-            {jokes.map((j) => (
-              <div key={j.id} className="group bg-white border-4 border-[#181410] p-6 shadow-[8px_8px_0px_0px_rgba(230,172,91,1)] relative transition-all hover:shadow-[8px_8px_0px_0px_rgba(24,20,16,1)]">
-                
-                {/* BOTÕES DE ACÇÃO (Esquerda Superior) */}
-                <div className="absolute -left-4 -top-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button
-                    onClick={() => deleteJoke(j.id)}
-                    className="p-2 bg-red-600 text-white border-4 border-[#181410] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-800"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                  <button
-                    onClick={() => compartilharCrime(j)}
-                    className="p-2 bg-blue-500 text-white border-4 border-[#181410] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-700"
-                    title="Partilhar Crime"
-                  >
-                    <Share2 size={20} />
-                  </button>
-                </div>
+          
+          {isLoading ? (
+            <p className="font-black animate-pulse">A CARREGAR PROVAS DO CRIME...</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-8">
+              {jokes.map((j: any) => (
+                <div key={j.id} className="group bg-white border-4 border-[#181410] p-6 shadow-[8px_8px_0px_0px_rgba(230,172,91,1)] relative transition-all hover:shadow-[8px_8px_0px_0px_rgba(24,20,16,1)]">
+                  
+                  <div className="absolute -left-4 -top-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button
+                      onClick={() => deleteJoke(j.id)}
+                      className="p-2 bg-red-600 text-white border-4 border-[#181410] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-800"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                    <button
+                      onClick={() => compartilharCrime(j)}
+                      className="p-2 bg-blue-500 text-white border-4 border-[#181410] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-700"
+                    >
+                      <Share2 size={20} />
+                    </button>
+                  </div>
 
-                <div className="absolute top-0 right-0 flex border-l-4 border-b-4 border-[#181410]">
-                  <div className="bg-[#181410] text-white px-3 py-1 font-black text-xs uppercase italic">{j.category}</div>
-                  <div className="bg-[#F67611] text-white px-3 py-1 font-black text-xs uppercase italic">Cringe: {j.cringeLevel}/10</div>
-                </div>
+                  <div className="absolute top-0 right-0 flex border-l-4 border-b-4 border-[#181410]">
+                    <div className="bg-[#181410] text-white px-3 py-1 font-black text-xs uppercase italic">{j.category}</div>
+                    <div className="bg-[#F67611] text-white px-3 py-1 font-black text-xs uppercase italic">Cringe: {j.cringeLevel}/10</div>
+                  </div>
 
-                {/* ERRO DE ASPAS CORRIGIDO AQUI TAMBÉM */}
-                <p className="text-4xl font-black italic leading-tight mt-4 mb-6 pr-10">&quot;{j.text}&quot;</p>
+                  <p className="text-4xl font-black italic leading-tight mt-4 mb-6 pr-10">&quot;{j.text}&quot;</p>
 
-                <div className="flex justify-between items-center border-t-4 border-[#181410] pt-4 font-bold uppercase text-xs">
-                  <span className={j.reaction === 'Silêncio Mortal' ? 'text-red-600 underline decoration-2' : j.reaction === 'Ficou sem ar' ? 'text-green-600' : ''}>
-                    Impacto: {j.reaction}
-                  </span>
-                  <span>{new Date(j.date).toLocaleDateString()}</span>
+                  <div className="flex justify-between items-center border-t-4 border-[#181410] pt-4 font-bold uppercase text-xs">
+                    <span className={j.reaction === 'Silêncio Mortal' ? 'text-red-600 underline decoration-2' : j.reaction === 'Ficou sem ar' ? 'text-green-600' : ''}>
+                      Impacto: {j.reaction}
+                    </span>
+                    <span>{j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'Recentemente'}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
